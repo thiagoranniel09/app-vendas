@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+body {
+  margin: 0;
+  font-family: Inter, Arial, sans-serif;
+  background: #f6f7fb;
+  color: #0f172a;
+}
+
+/* ========================= */
+/* 📱 MOBILE ANALYTICS UX */
+/* ========================= */
+
+@media (max-width: 768px) {
+
+  /* KPIs em scroll horizontal */
+  .kpi-mobile {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .kpi-mobile > div {
+    min-width: 140px;
+    flex: 0 0 auto;
+  }
+
+  /* GRÁFICOS EMPILHADOS */
+  .grid-mobile {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chart-mobile {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* TIPOGRAFIA MOBILE */
+  h2 {
+    font-size: 18px !important;
+  }
+
+  h3 {
+    font-size: 16px !important;
+  }
+
+  p {
+    font-size: 13px !important;
+  }
+
+  /* CARDS MAIS CONFORTÁVEIS */
+  .card-mobile {
+    padding: 14px !important;
+  }
+}
