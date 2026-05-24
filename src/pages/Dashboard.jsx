@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabase";
-import { Card } from "../components/ui";
-import { motion } from "framer-motion";
 
 import {
   LineChart,
@@ -15,14 +13,14 @@ import {
 } from "recharts";
 
 export default function Dashboard({ session }) {
-  const [sales, setSales] = useState([]);
-
   const user = session.user;
 
+  const [sales, setSales] = useState([]);
+
   // =========================
-  // 📥 CARREGAR DADOS
+  // 📦 CARREGAR VENDAS
   // =========================
-  async function load() {
+  async function loadSales() {
     const { data } = await supabase
       .from("sales")
       .select("*")
@@ -32,150 +30,184 @@ export default function Dashboard({ session }) {
   }
 
   useEffect(() => {
-    load();
+    loadSales();
   }, []);
 
   // =========================
   // 📊 KPIs
   // =========================
-  const totalSales = sales.length;
-
   const totalRevenue = sales.reduce(
-    (acc, s) => acc + s.valor * s.quantidade,
+    (acc, s) => acc + Number(s.valor || 0) * Number(s.quantidade || 0),
     0
   );
 
   const totalCost = sales.reduce(
-    (acc, s) => acc + s.custo * s.quantidade,
+    (acc, s) => acc + Number(s.custo || 0) * Number(s.quantidade || 0),
     0
   );
 
   const profit = totalRevenue - totalCost;
 
+  const totalSales = sales.length;
+
   // =========================
-  // 📈 DADOS POR DIA
+  // 📈 GRÁFICO LINE (dia a dia)
   // =========================
-  const chartData = Object.values(
-    sales.reduce((acc, s) => {
-      if (!acc[s.data]) {
-        acc[s.data] = { data: s.data, receita: 0, custo: 0 };
+  const lineData = useMemo(() => {
+    const map = {};
+
+    sales.forEach((s) => {
+      const date = s.data;
+
+      if (!map[date]) {
+        map[date] = {
+          date,
+          revenue: 0,
+          cost: 0,
+        };
       }
 
-      acc[s.data].receita += s.valor * s.quantidade;
-      acc[s.data].custo += s.custo * s.quantidade;
+      map[date].revenue += Number(s.valor || 0) * Number(s.quantidade || 0);
+      map[date].cost += Number(s.custo || 0) * Number(s.quantidade || 0);
+    });
 
-      return acc;
-    }, {})
-  );
+    return Object.values(map);
+  }, [sales]);
 
   // =========================
-  // 📦 TOP PRODUTOS
+  // 📊 TOP PRODUTOS
   // =========================
-  const productData = Object.values(
-    sales.reduce((acc, s) => {
-      if (!acc[s.produto]) {
-        acc[s.produto] = { produto: s.produto, qtd: 0 };
+  const barData = useMemo(() => {
+    const map = {};
+
+    sales.forEach((s) => {
+      if (!map[s.produto]) {
+        map[s.produto] = {
+          name: s.produto,
+          qty: 0,
+        };
       }
 
-      acc[s.produto].qtd += Number(s.quantidade);
+      map[s.produto].qty += Number(s.quantidade || 0);
+    });
 
-      return acc;
-    }, {})
-  ).sort((a, b) => b.qtd - a.qtd);
+    return Object.values(map);
+  }, [sales]);
 
   return (
-    <div style={{ padding: 16, background: "#f8fafc", minHeight: "100vh" }}>
-      
-      <h2>Dashboard</h2>
-      <p style={{ color: "#64748b", fontSize: 13 }}>
-        visão geral do seu negócio
-      </p>
+    <div style={styles.page}>
+
+      <h2>Dashboard Financeiro</h2>
 
       {/* ========================= */}
-      {/* 📊 KPIs */}
+      {/* 📊 KPI STRIPE */}
       {/* ========================= */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: 10,
-          marginTop: 12,
-        }}
-      >
-        <KPI title="Vendas" value={totalSales} />
-        <KPI title="Faturamento" value={`R$ ${totalRevenue.toFixed(2)}`} />
-        <KPI title="Custos" value={`R$ ${totalCost.toFixed(2)}`} />
-        <KPI
-          title="Lucro"
-          value={`R$ ${profit.toFixed(2)}`}
-          color={profit >= 0 ? "#16A34A" : "#DC2626"}
-        />
+      <div style={styles.kpis}>
+
+        <div style={styles.card}>
+          <h4>Receita</h4>
+          <p>R$ {totalRevenue.toFixed(2)}</p>
+        </div>
+
+        <div style={styles.card}>
+          <h4>Custos</h4>
+          <p>R$ {totalCost.toFixed(2)}</p>
+        </div>
+
+        <div style={styles.card}>
+          <h4>Lucro</h4>
+          <p style={{ color: "green" }}>
+            R$ {profit.toFixed(2)}
+          </p>
+        </div>
+
+        <div style={styles.card}>
+          <h4>Vendas</h4>
+          <p>{totalSales}</p>
+        </div>
+
       </div>
 
       {/* ========================= */}
       {/* 📈 GRÁFICO LINHA */}
       {/* ========================= */}
-      <Card style={{ marginTop: 16 }}>
+      <div style={styles.chart}>
         <h3>Faturamento vs Custos</h3>
 
-        <div style={{ width: "100%", height: 250 }}>
-          <ResponsiveContainer>
-            <LineChart data={chartData}>
-              <XAxis dataKey="data" />
-              <YAxis />
-              <Tooltip />
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={lineData}>
 
-              <Line
-                type="monotone"
-                dataKey="receita"
-                stroke="#2563EB"
-                strokeWidth={2}
-              />
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
 
-              <Line
-                type="monotone"
-                dataKey="custo"
-                stroke="#DC2626"
-                strokeWidth={2}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="#4F46E5"
+              strokeWidth={2}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="cost"
+              stroke="#EF4444"
+              strokeWidth={2}
+            />
+
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
 
       {/* ========================= */}
-      {/* 📦 TOP PRODUTOS */}
+      {/* 📊 BARRAS */}
       {/* ========================= */}
-      <Card style={{ marginTop: 16 }}>
+      <div style={styles.chart}>
         <h3>Produtos mais vendidos</h3>
 
-        <div style={{ width: "100%", height: 250 }}>
-          <ResponsiveContainer>
-            <BarChart data={productData}>
-              <XAxis dataKey="produto" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="qtd" fill="#2563EB" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={barData}>
+
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+
+            <Bar dataKey="qty" fill="#4F46E5" />
+
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
     </div>
   );
 }
 
 // =========================
-// 💡 COMPONENTE KPI
+// 🎨 STYLE STRIPE
 // =========================
-function KPI({ title, value, color }) {
-  return (
-    <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
-      <Card>
-        <p style={{ fontSize: 12, color: "#64748b" }}>{title}</p>
-        <h3 style={{ margin: 0, color: color || "#0f172a" }}>
-          {value}
-        </h3>
-      </Card>
-    </motion.div>
-  );
-}
+const styles = {
+  page: {
+    padding: 16,
+  },
+
+  kpis: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 10,
+    marginBottom: 16,
+  },
+
+  card: {
+    background: "white",
+    padding: 12,
+    borderRadius: 12,
+    boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+  },
+
+  chart: {
+    background: "white",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+};
