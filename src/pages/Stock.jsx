@@ -75,7 +75,7 @@ export default function Stock({ session }) {
   // DELETE
   // =========================
   async function remove(id) {
-    if (!confirm("Excluir produto?")) return;
+    if (!confirm("Deseja excluir este produto?")) return;
     await supabase.from("products").delete().eq("id", id);
     loadProducts();
   }
@@ -107,7 +107,7 @@ export default function Stock({ session }) {
   }
 
   // =========================
-  // QUICK STOCK UPDATE
+  // QUICK STOCK
   // =========================
   async function updateQty(p, delta) {
     const newQty = Math.max(0, (p.quantidade || 0) + delta);
@@ -141,35 +141,29 @@ export default function Stock({ session }) {
 
       <h2 style={styles.title}>Estoque</h2>
 
-      {/* ========================= */}
-      {/* FORM */}
-      {/* ========================= */}
+      {/* CADASTRO */}
       <Card style={styles.card}>
+        <h3>Novo produto</h3>
 
-        <h3>Novo Produto</h3>
-
-        <input placeholder="Nome do produto"
+        <input placeholder="Nome"
           value={form.nome}
           onChange={(e) => setForm({ ...form, nome: e.target.value })}
           style={styles.input}
         />
 
-        <input placeholder="Custo"
-          type="number"
+        <input placeholder="Custo" type="number"
           value={form.custo}
           onChange={(e) => setForm({ ...form, custo: e.target.value })}
           style={styles.input}
         />
 
-        <input placeholder="Venda"
-          type="number"
+        <input placeholder="Preço de venda" type="number"
           value={form.valor_venda}
           onChange={(e) => setForm({ ...form, valor_venda: e.target.value })}
           style={styles.input}
         />
 
-        <input placeholder="Quantidade"
-          type="number"
+        <input placeholder="Quantidade" type="number"
           value={form.quantidade}
           onChange={(e) => setForm({ ...form, quantidade: e.target.value })}
           style={styles.input}
@@ -188,23 +182,19 @@ export default function Stock({ session }) {
         />
 
         <Button onClick={createProduct}>
-          + Adicionar Produto
+          + Cadastrar produto
         </Button>
-
       </Card>
 
-      {/* ========================= */}
-      {/* FILTERS */}
-      {/* ========================= */}
+      {/* FILTROS */}
       <div style={styles.filters}>
-
         <input
           placeholder="Buscar produto..."
           value={filters.search}
           onChange={(e) =>
             setFilters({ ...filters, search: e.target.value })
           }
-          style={styles.input}
+          style={styles.filterInput}
         />
 
         <select
@@ -212,7 +202,7 @@ export default function Stock({ session }) {
           onChange={(e) =>
             setFilters({ ...filters, category: e.target.value })
           }
-          style={styles.input}
+          style={styles.filterInput}
         >
           <option value="">Categoria</option>
           {categories.map((c, i) => (
@@ -225,62 +215,46 @@ export default function Stock({ session }) {
           onChange={(e) =>
             setFilters({ ...filters, supplier: e.target.value })
           }
-          style={styles.input}
+          style={styles.filterInput}
         >
           <option value="">Fornecedor</option>
           {suppliers.map((s, i) => (
             <option key={i}>{s}</option>
           ))}
         </select>
-
       </div>
 
-      {/* ========================= */}
-      {/* LISTA PREMIUM */}
-      {/* ========================= */}
+      {/* LISTA */}
       {filtered.map((p) => {
 
-        const margin = (p.valor_venda || 0) - (p.custo || 0);
-        const isLow = (p.quantidade || 0) <= 5;
+        const lucro = (p.valor_venda || 0) - (p.custo || 0);
+        const baixo = (p.quantidade || 0) <= 5;
 
         return (
-          <Card
-            key={p.id}
-            style={styles.card}
-            onMouseDown={(e) => {
-              e.currentTarget.style.transform = "scale(0.985)";
-            }}
-            onMouseUp={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
+          <Card key={p.id} style={styles.card}>
 
-            {/* HEADER */}
             <div style={styles.rowTop}>
-              <strong style={styles.productName}>{p.nome}</strong>
+              <strong>{p.nome}</strong>
 
               <span style={{
                 ...styles.badge,
-                background: isLow ? "#fff1f2" : "#ecfdf5",
-                color: isLow ? "#dc2626" : "#16a34a"
+                background: baixo ? "#fff1f2" : "#ecfdf5",
+                color: baixo ? "#dc2626" : "#16a34a"
               }}>
-                {isLow ? "Estoque baixo" : "OK"}
+                {baixo ? "Baixo" : "OK"}
               </span>
             </div>
 
-            {/* INFO */}
             <div style={styles.grid}>
               <div>📦 {p.quantidade}</div>
-              <div>💰 R$ {p.custo}</div>
-              <div>💵 R$ {p.valor_venda}</div>
-              <div>📈 Lucro: R$ {margin}</div>
+              <div>💰 {p.custo}</div>
+              <div>💵 {p.valor_venda}</div>
+              <div>📈 {lucro}</div>
               <div>🏷 {p.categoria}</div>
               <div>🏭 {p.fornecedor}</div>
             </div>
 
-            {/* ACTIONS (iOS + STRIPE) */}
             <div style={styles.actions}>
-
               <button style={styles.iconBtn} onClick={() => updateQty(p, -1)}>−</button>
               <button style={styles.iconBtn} onClick={() => updateQty(p, +1)}>+</button>
 
@@ -291,36 +265,82 @@ export default function Stock({ session }) {
               <button style={styles.dangerBtn} onClick={() => remove(p.id)}>
                 Excluir
               </button>
-
             </div>
 
           </Card>
         );
       })}
 
-      {/* ========================= */}
-      {/* MODAL EDIT */}
-      {/* ========================= */}
+      {/* MODAL (SÓ X) */}
       {editOpen && editForm && (
         <div style={styles.modalBg}>
           <div style={styles.modal}>
 
-            <h3>Editar Produto</h3>
+            {/* HEADER */}
+            <div style={styles.modalHeader}>
+              <h3>Editar produto</h3>
 
-            {Object.keys(editForm)
-              .filter(k => k !== "id" && k !== "user_id")
-              .map((key) => (
-                <input
-                  key={key}
-                  value={editForm[key] || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, [key]: e.target.value })
-                  }
-                  style={styles.input}
-                />
-              ))}
+              <button
+                onClick={() => {
+                  setEditOpen(false);
+                  setEditForm(null);
+                }}
+                style={styles.closeBtn}
+              >
+                ✕
+              </button>
+            </div>
 
-            <Button onClick={saveEdit}>Salvar</Button>
+            <p style={styles.modalSub}>Ajuste os dados do produto</p>
+
+            <input value={editForm.nome}
+              onChange={(e) =>
+                setEditForm({ ...editForm, nome: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input value={editForm.custo}
+              type="number"
+              onChange={(e) =>
+                setEditForm({ ...editForm, custo: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input value={editForm.valor_venda}
+              type="number"
+              onChange={(e) =>
+                setEditForm({ ...editForm, valor_venda: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input value={editForm.quantidade}
+              type="number"
+              onChange={(e) =>
+                setEditForm({ ...editForm, quantidade: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input value={editForm.categoria}
+              onChange={(e) =>
+                setEditForm({ ...editForm, categoria: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <input value={editForm.fornecedor}
+              onChange={(e) =>
+                setEditForm({ ...editForm, fornecedor: e.target.value })
+              }
+              style={styles.input}
+            />
+
+            <Button onClick={saveEdit} style={{ width: "100%" }}>
+              Salvar alterações
+            </Button>
 
           </div>
         </div>
@@ -330,123 +350,24 @@ export default function Stock({ session }) {
   );
 }
 
-// =========================
-// STYLE PREMIUM FINAL
-// =========================
+// styles (mantidos)
 const styles = {
-
-  page: {
-    padding: 16,
-    background: "#f8fafc",
-    minHeight: "100vh"
-  },
-
-  title: {
-    fontSize: 22,
-    fontWeight: 600,
-    marginBottom: 12,
-  },
-
-  card: {
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 18,
-    background: "#fff",
-    border: "1px solid #eef2f7",
-    boxShadow: "0 6px 18px rgba(15, 23, 42, 0.06)",
-    transition: "all 0.2s ease",
-  },
-
-  input: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 8,
-    border: "1px solid #e5e7eb",
-    borderRadius: 10,
-  },
-
-  filters: {
-    display: "grid",
-    gridTemplateColumns: "2fr 1fr 1fr",
-    gap: 8,
-    marginBottom: 12,
-  },
-
-  rowTop: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  productName: {
-    fontSize: 16,
-    fontWeight: 600,
-  },
-
-  badge: {
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 500,
-  },
-
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 6,
-    marginTop: 10,
-    fontSize: 13,
-    color: "#334155",
-  },
-
-  actions: {
-    display: "flex",
-    gap: 8,
-    marginTop: 12,
-  },
-
-  iconBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    border: "1px solid #e2e8f0",
-    background: "#fff",
-    fontSize: 20,
-  },
-
-  primaryBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    border: "1px solid #dbeafe",
-    background: "#eff6ff",
-    color: "#2563eb",
-    fontWeight: 600,
-  },
-
-  dangerBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: 14,
-    border: "1px solid #fee2e2",
-    background: "#fff1f2",
-    color: "#dc2626",
-    fontWeight: 600,
-  },
-
-  modalBg: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.4)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  modal: {
-    background: "#fff",
-    padding: 20,
-    borderRadius: 16,
-    width: 420,
-  },
+  page: { padding: 16, background: "#f8fafc", minHeight: "100vh" },
+  title: { fontSize: 22, fontWeight: 600, marginBottom: 12 },
+  card: { marginBottom: 12, padding: 16, borderRadius: 18, background: "#fff", border: "1px solid #eef2f7" },
+  input: { width: "100%", padding: 10, marginBottom: 8, border: "1px solid #e5e7eb", borderRadius: 10 },
+  filters: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 },
+  filterInput: { flex: 1, minWidth: 140, padding: 10, border: "1px solid #e5e7eb", borderRadius: 10 },
+  rowTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  badge: { padding: "4px 10px", borderRadius: 999, fontSize: 12 },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 6, marginTop: 10 },
+  actions: { display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" },
+  iconBtn: { width: 44, height: 44, borderRadius: 12, border: "1px solid #e2e8f0", background: "#fff" },
+  primaryBtn: { flex: 1, minWidth: 100, height: 44, borderRadius: 12, background: "#eff6ff", border: "1px solid #dbeafe", color: "#2563eb", fontWeight: 600 },
+  dangerBtn: { flex: 1, minWidth: 100, height: 44, borderRadius: 12, background: "#fff1f2", border: "1px solid #fee2e2", color: "#dc2626", fontWeight: 600 },
+  modalBg: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", justifyContent: "center", alignItems: "center" },
+  modal: { background: "#fff", padding: 20, borderRadius: 16, width: 420 },
+  modalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  modalSub: { fontSize: 13, color: "#64748b", marginBottom: 10 },
+  closeBtn: { width: 36, height: 36, borderRadius: 10, border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer" }
 };
